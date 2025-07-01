@@ -1,3 +1,4 @@
+// --- Your original game variables ---
 var s;
 var scl = 20;
 var food;
@@ -5,43 +6,59 @@ var count = 1;
 var touch = 1;
 var prevX = [];
 var prevY = [];
+var currentScore = 0;
 
-
-
+const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzY_vWm4sLQjJnwFoKEP32hiWdDY8ins5acTErD0mFCo5ZiNAw273gMsCfDBw3qdo71vA/exec';
 
 function setup() {
-  createCanvas(600, 600)
+  // Create canvas inside the #game-area div
+  let canvas = createCanvas(600, 600);
+  canvas.parent('game-area');
+
   s = new Snake();
   frameRate(10);
-  //food  = createVector(random(width), random(height));
   pickLocation();
-  // console.log(food);
+
+  updateScoreDisplay();
+  fetchLeaderboard();
+
+  // Refresh leaderboard button
+  document.getElementById('refresh-leaderboard').addEventListener('click', fetchLeaderboard);
 }
 
 function pickLocation() {
   var col = floor(width / scl);
   var rows = floor(height / scl);
   food = createVector(floor(random(col)), floor(random(rows)));
-
-  // console.log(food);
-food.mult(scl);
+  food.mult(scl);
 }
 
 function foodTouch() {
-
-  if (s.x == food.x && s.y == food.y) {
-    return 1;
-  } else {
-    return 0;
-  }
+  return s.x === food.x && s.y === food.y;
 }
 
-
-
 function gameOver() {
-  alert("Your game is over and score is : "+ prevX.length);
-  document.location.reload();
+  let playerName = prompt("Game Over! Enter your name to save your score:");
+  if (!playerName) playerName = "Anonymous";
 
+  let data = new URLSearchParams();
+  data.append('name', playerName);
+  data.append('score', prevX.length);
+
+  fetch(GOOGLE_SHEET_URL, {
+    method: 'POST',
+    body: data
+  })
+  .then(res => res.json())
+  .then(json => {
+    alert('Score saved!');
+    fetchLeaderboard();
+  })
+  .catch(err => {
+    alert('Error saving score: ' + err);
+  });
+
+  document.location.reload();
 }
 
 function feed() {
@@ -49,69 +66,117 @@ function feed() {
   prevY.push(s.y);
 
   if (prevX.length > touch + 1) {
-    prevX.shift(); //pop
-    prevY.shift(); //pop  for MCBC game
+    prevX.shift();
+    prevY.shift();
   }
 }
 
-
 function draw() {
-  var c = 0;
-  background(51)
+  background(51);
   s.update();
 
   fill(255, 0, 100);
   rect(food.x, food.y, scl, scl);
-  var z = foodTouch();
-  if (z == 1) {
+
+  if (foodTouch()) {
     pickLocation();
-    touch = touch + 1;
+    touch++;
   }
+
   feed();
   s.showIt();
 
   if ((prevX.includes(s.x)) && (prevY.includes(s.y))) {
-    for (var t = 3; t < prevX.length; t++) {
-      if (prevX[t] == s.x) {
-        if (prevY[t] == s.y) {
-          //console.log(prevX[t] + " " + s.x + " " + prevY[t] + " " + s.y);
-
-          c = c + 1
-          //console.log(c);
-        }
-
-
-        if (c > 1) {
-          gameOver()
-        }
+    let c = 0;
+    for (let t = 3; t < prevX.length; t++) {
+      if (prevX[t] === s.x && prevY[t] === s.y) {
+        c++;
       }
-
+      if (c > 1) gameOver();
     }
-
   }
 
+  currentScore = touch;
+  updateScoreDisplay();
+}
+
+function updateScoreDisplay() {
+  document.getElementById('current-score').textContent = currentScore;
+}
+
+function fetchLeaderboard() {
+  fetch(GOOGLE_SHEET_URL)
+    .then(res => res.json())
+    .then(data => {
+      // Sort scores descending
+      data.sort((a, b) => b.score - a.score);
+
+      let list = document.getElementById('leaderboard-list');
+      list.innerHTML = '';
+
+      data.forEach((item, index) => {
+        let li = document.createElement('li');
+        li.textContent = `${item.name} — ${item.score}`;
+        list.appendChild(li);
+      });
+    })
+    .catch(err => {
+      console.error('Error fetching leaderboard:', err);
+    });
 }
 
 
+// --- Snake class ---
+
+class Snake {
+  constructor() {
+    this.x = 0;
+    this.y = 0;
+    this.xSpeed = 1;
+    this.ySpeed = 0;
+
+    this.dir = function (x, y) {
+      this.xSpeed = x;
+      this.ySpeed = y;
+    }
+
+    this.getDir = function() {
+      return {
+        xSpeed: this.xSpeed,
+        ySpeed: this.ySpeed
+      };
+    }
+
+    this.update = function () {
+      this.x = this.x + (this.xSpeed * scl);
+      this.y = this.y + (this.ySpeed * scl);
+
+      if (this.x >= 600) this.x = 0;
+      if (this.y >= 600) this.y = 0;
+      if (this.y < 0) this.y = 600;
+      if (this.x < 0) this.x = 600;
+    };
+
+    this.showIt = function () {
+      fill(252);
+      rect(this.x, this.y, scl, scl);
+      for (var m = 0; m < touch; m++) {
+        rect(prevX[m], prevY[m], scl, scl);
+      }
+    };
+  }
+}
+
 function keyPressed() {
   var direction = s.getDir();
-    
-  if (keyCode === UP_ARROW) {
-    if(direction.ySpeed != 1){
-    s.dir(0, -1);
-    }
-  } else if (keyCode === DOWN_ARROW) {
-    if(direction.ySpeed != -1){
-    s.dir(0, 1);
-    }
-  } else if (keyCode === RIGHT_ARROW) {
-    if(direction.xSpeed !=-1){
-    s.dir(1, 0);
-    }
-  } else if (keyCode === LEFT_ARROW) {
-    if(direction.xSpeed !=1){
-    s.dir(-1, 0);
-    }
-  }
 
+  if (keyCode === UP_ARROW && direction.ySpeed !== 1) {
+    s.dir(0, -1);
+  } else if (keyCode === DOWN_ARROW && direction.ySpeed !== -1) {
+    s.dir(0, 1);
+  } else if (keyCode === RIGHT_ARROW && direction.xSpeed !== -1) {
+    s.dir(1, 0);
+  } else if (keyCode === LEFT_ARROW && direction.xSpeed !== 1) {
+    s.dir(-1, 0);
+  }
 }
