@@ -1,10 +1,24 @@
-<html>
-    <head>
-         <script src="/p5.min.js"></script>
-            <script src="/snake.js"></script>
-            <script src="/snakeBody.js"></script>
-    </head>
-    <body>
-
-    </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snake Game with Scorecard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+  <script src="sketch.js" defer></script>
+</head>
+<body>
+  <div id="container">
+    <div id="game-area">
+      <!-- p5.js canvas will be here -->
+    </div>
+    <div id="scorecard">
+      <h2>Score Card</h2>
+      <div>Current Score: <span id="current-score">0</span></div>
+      <button id="refresh-leaderboard">Refresh Leaderboard</button>
+      <h3>Leaderboard</h3>
+      <ol id="leaderboard-list"></ol>
+    </div>
+  </div>
+</body>
 </html>
